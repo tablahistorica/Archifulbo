@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Archifulbo - Historial de Fútbol</title>
+    <link rel="icon" type="image/png" href="favicon_transparente.png">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background-color: #0b0f1a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; }
+        * { box-sizing: border-box; }
+        .main-container { display: flex; min-height: 100vh; }
+        
+        .sidebar { width: 260px; background: #0f172a; border-right: 1px solid #1e293b; padding: 20px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; }
+        .sidebar-title { margin-bottom: 40px; text-align: center; }
+        
+        .nav-btn { width: 100%; text-align: left; background: none; border: none; color: white; padding: 12px; cursor: pointer; border-radius: 5px; margin-bottom: 10px; font-weight: bold; transition: 0.3s; }
+        .nav-btn:hover { background: #1e293b; }
+        .nav-btn.active { background: #3b82f6; color: #fff; }
+        
+        .content { flex: 1; padding: 20px; display: flex; flex-direction: column; align-items: center; position: relative; min-height: 100vh; }
+        .content-sections { flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; }
+        
+        .selector-bar { margin-bottom: 20px; background: #161e2e; padding: 15px; border-radius: 8px; border: 1px solid #2d3748; display: flex; gap: 10px; align-items: center; justify-content: center; width: 100%; max-width: 800px;}
+        select { background: #1f2937; color: white; border: 1px solid #38bdf8; padding: 8px; border-radius: 4px; }
+        .resumen-container { background: #161e2e; border-radius: 8px; width: 100%; max-width: 800px; border: 1px solid #2d3748; overflow: hidden; margin-bottom: 25px; }
+        .resumen-header { background: #1f2937; padding: 12px; text-align: center; font-weight: bold; color: #38bdf8; border-bottom: 2px solid #3b82f6; text-transform: uppercase; font-size: 0.9rem; }
+        .stats-table { width: 100%; border-collapse: collapse; background: #111827; }
+        .stats-table td { padding: 10px 20px; border-bottom: 1px solid #1f2937; font-size: 0.95rem; }
+        .label { color: #94a3b8; }
+        .value { text-align: right; font-weight: bold; color: #f8fafc; }
+        .highlight { color: #38bdf8; }
+        .goleadas-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; background: #0b0f1a; }
+        .goleadas-table th { background: #1f2937; color: #94a3b8; padding: 10px; border-bottom: 1px solid #2d3748; }
+        .goleadas-table td { padding: 10px 8px; border-bottom: 1px solid #1f2937; text-align: center; }
+        .sub-header { background: #1a2436; color: #38bdf8; font-size: 0.8rem; padding: 8px; font-weight: bold; border-top: 1px solid #2d3748; text-align: center; }
+        
+        .escudo-v { width: 45px; height: 45px; border-radius: 50%; display: inline-block; vertical-align: middle; border: 2px solid #2d3748; overflow: hidden; background-color: #333; position: relative; }
+        .escudo-Boca { background: linear-gradient(#0033a0 33%, #ffb81c 33% 66%, #0033a0 66%); }
+        .escudo-River { background: white; }
+        .escudo-River::after { content: ""; position: absolute; width: 150%; height: 8px; background: #ed1c24; transform: rotate(-45deg); top: 18px; left: -10px; }
+        .escudo-Independiente { background: #e30613; }
+        .escudo-Racing { background: repeating-linear-gradient(90deg, #7bb4e3, #7bb4e3 10px, white 10px, white 20px); }
+        .escudo-SanLorenzo { background: repeating-linear-gradient(90deg, #0033a0, #0033a0 10px, #e30613 10px, #e30613 20px); }
+        
+        /* ESCUDO VÉLEZ SARSFIELD MEJORADO Y CENTRADO */
+        .escudo-Velez { background-color: white; }
+        .escudo-Velez::after { 
+            content: ""; 
+            position: absolute; 
+            width: 22px; 
+            height: 22px; 
+            border-bottom: 6px solid #0033a0; 
+            border-right: 6px solid #0033a0; 
+            left: 50%; 
+            top: -4px; 
+            transform: translateX(-50%) rotate(45deg); 
+        }
+
+        .footer { margin-top: auto; width: 100%; max-width: 800px; padding: 20px; text-align: center; font-size: 0.8rem; color: #94a3b8; border-top: 1px solid #2d3748; }
+        .footer a { color: #38bdf8; text-decoration: none; cursor: pointer; margin: 0 10px; font-weight: bold; }
+        .footer a:hover { text-decoration: underline; }
+        .gambling-warning { border: 1px solid #ef4444; color: #fca5a5; padding: 12px; margin-bottom: 15px; border-radius: 5px; font-weight: bold; background: rgba(239, 68, 68, 0.1); font-size: 0.85rem; }
+        .legal-content { background: #161e2e; padding: 25px; border-radius: 8px; border: 1px solid #2d3748; color: #cbd5e1; line-height: 1.6; text-align: left; margin-bottom: 25px; }
+        .legal-content h2 { color: #38bdf8; margin-top: 0; font-size: 1.4rem; }
+        .legal-content h3 { color: #e2e8f0; margin-top: 20px; font-size: 1.1rem; border-bottom: 1px solid #2d3748; padding-bottom: 5px; }
+        .legal-content ul { padding-left: 20px; margin-top: 10px; }
+        .legal-content li { margin-bottom: 8px; }
+        .legal-content a { color: #38bdf8; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="sidebar-title">
+                <img src="logo_transparente.png" alt="Logo Archifulbo" style="width: 100%; max-width: 220px; display: block; margin: 0 auto;">
+            </div>
+            <button id="btnNavResumen" onclick="mostrarSeccion('resumen')" class="nav-btn active">📊 RESUMEN</button>
+            <button id="btnNavEstadios" onclick="mostrarSeccion('estadios')" class="nav-btn">🏟️ ESTADIOS</button>
+            <button id="btnNavDecadas" onclick="mostrarSeccion('decadas')" class="nav-btn">📅 DÉCADAS</button>
+            <button id="btnNavHistorial" onclick="mostrarSeccion('historial')" class="nav-btn">📜 HISTORIAL</button>
+            <button id="btnNavTrivia" onclick="mostrarSeccion('trivia')" class="nav-btn">🧠 TRIVIA</button>
+            <button id="btnNavComunidad" onclick="mostrarSeccion('comunidad')" class="nav-btn">🤝 COMUNIDAD</button>
+        </div>
+
+        <div class="content">
+            <div class="content-sections">
+                <div id="sec-resumen" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                    <div class="selector-bar">
+                        <select id="selA"></select> <span>VS</span> <select id="selB"></select>
+                        <button style="background:#38bdf8; color:#0b0f1a; border:none; padding:8px 15px; border-radius:4px; font-weight:bold; cursor:pointer;" onclick="cargarDatos()">CARGAR</button>
+                    </div>
+                    
+                    <div id="mini-resumen-container" class="resumen-container" style="padding: 15px; background: #1e293b; border-color: #38bdf8; display: none;">
+                        <div id="texto-folclore" style="color: #e2e8f0; line-height: 1.5;"></div>
+                    </div>
+                    <div class="resumen-container">
+                        <div class="resumen-header">Resumen General</div>
+                        <div style="display: flex; justify-content: space-around; align-items: center; padding: 15px; background: #111827;">
+                            <div style="text-align: center;"><div id="escA" class="escudo-v"></div><div id="labA_nombre" style="font-weight: bold; margin-top:5px">...</div></div>
+                            <div style="background: #1f2937; padding: 5px 10px; border-radius: 50%; font-size: 0.7rem;">VS</div>
+                            <div style="text-align: center;"><div id="escB" class="escudo-v"></div><div id="labB_nombre" style="font-weight: bold; margin-top:5px">...</div></div>
+                        </div>
+                        <table class="stats-table">
+                            <tr><td class="label">Partidos Jugados</td><td id="pj" class="value highlight">0</td></tr>
+                            <tr><td id="labA" class="label">Ganó Equipo A</td><td id="ga" class="value">0</td></tr>
+                            <tr><td id="labB" class="label">Ganó Equipo B</td><td id="gb" class="value">0</td></tr>
+                            <tr><td class="label">Empates</td><td id="emp" class="value">0</td></tr>
+                            <tr><td id="labGolA" class="label">Goles A</td><td id="ext_ga" class="value">0</td></tr>
+                            <tr><td id="labGolB" class="label">Goles B</td><td id="ext_gb" class="value">0</td></tr>
+                        </table>
+
+                        <div class="sub-header">ÚLTIMOS 5 PARTIDOS</div>
+                        <table class="goleadas-table">
+                            <thead><tr><th>FECHA</th><th>TORNEO</th><th>LOCAL</th><th>RESULTADO</th><th>VISITANTE</th></tr></thead>
+                            <tbody id="cuerpoUltimos5"></tbody>
+                        </table>
+
+                        <button id="btnToggleStats" onclick="toggleMasStats()" style="width:100%; padding:12px; background:#1f2937; color:#38bdf8; border:none; border-top:1px solid #2d3748; cursor:pointer; font-weight:bold; font-size: 0.85rem; transition: 0.3s;">
+                            ⬇️ MOSTRAR MÁS ESTADÍSTICAS ⬇️
+                        </button>
+
+                        <div id="masEstadisticas1" style="display: none; width: 100%;">
+                            <div class="sub-header">DEFINICIÓN POR PENALES</div>
+                            <table class="stats-table">
+                                <tr><td id="penLabA" class="label">Ganó ...</td><td id="penA" class="value">0</td></tr>
+                                <tr><td id="penLabB" class="label">Ganó ...</td><td id="penB" class="value">0</td></tr>
+                            </table>
+                            
+                            <div class="sub-header">ESTADÍSTICAS: ERA AMATEUR</div>
+                            <table class="stats-table">
+                                <tr><td class="label">Partidos Jugados (Amateur)</td><td id="amaPJ" class="value highlight">0</td></tr>
+                                <tr><td id="amaLabGA" class="label">Ganó ...</td><td id="amaGA" class="value">0</td></tr>
+                                <tr><td id="amaLabGB" class="label">Ganó ...</td><td id="amaGB" class="value">0</td></tr>
+                                <tr><td class="label">Empates</td><td id="amaEmp" class="value">0</td></tr>
+                            </table>
+
+                            <div class="sub-header">ESTADÍSTICAS: ERA PROFESIONAL</div>
+                            <table class="stats-table">
+                                <tr><td class="label">Partidos Jugados (Profesional)</td><td id="proPJ" class="value highlight">0</td></tr>
+                                <tr><td id="proLabGA" class="label">Ganó ...</td><td id="proGA" class="value">0</td></tr>
+                                <tr><td id="proLabGB" class="label">Ganó ...</td><td id="proGB" class="value">0</td></tr>
+                                <tr><td class="label">Empates</td><td id="proEmp" class="value">0</td></tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="masEstadisticas2" style="display: none; width: 100%; max-width: 800px;">
+                        <div class="resumen-container">
+                            <div class="resumen-header">Mayores Goleadas (Diferencia de 3 o más)</div>
+                            <div id="headGolA" class="sub-header">De ...</div>
+                            <table class="goleadas-table">
+                                <thead><tr><th>FECHA</th><th>TORNEO</th><th>LOCAL</th><th>RESULTADO</th><th>VISITANTE</th></tr></thead>
+                                <tbody id="cuerpoGoleadasA"></tbody>
+                            </table>
+                            <div id="headGolB" class="sub-header" style="margin-top:10px">De ...</div>
+                            <table class="goleadas-table">
+                                <thead><tr><th>FECHA</th><th>TORNEO</th><th>LOCAL</th><th>RESULTADO</th><th>VISITANTE</th></tr></thead>
+                                <tbody id="cuerpoGoleadasB"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-estadios" style="display: none; width: 100%; max-width: 800px;">
+                    <div class="selector-bar">
+                        <select id="selEstadio" onchange="filtrarPorEstadio()"></select>
+                    </div>
+                    <div class="resumen-container">
+                        <div id="tituloEstadio" class="resumen-header">Estadísticas por Estadio</div>
+                        <table class="stats-table">
+                            <tr><td class="label">Partidos Jugados</td><td id="est_pj" class="value highlight">0</td></tr>
+                            <tr><td id="est_labA" class="label">Ganó ...</td><td class="value"><span id="est_ga">0</span> <small id="est_perc_ga"></small></td></tr>
+                            <tr><td id="est_labB" class="label">Ganó ...</td><td class="value"><span id="est_gb">0</span> <small id="est_perc_gb"></small></td></tr>
+                            <tr><td class="label">Empates</td><td class="value"><span id="est_emp">0</span> <small id="est_perc_emp"></small></td></tr>
+                        </table>
+                        <div class="sub-header">DETALLE DE PARTIDOS</div>
+                        <table class="goleadas-table">
+                            <thead><tr><th>FECHA</th><th>TORNEO</th><th>LOCAL</th><th>RESULTADO</th><th>VISITANTE</th></tr></thead>
+                            <tbody id="cuerpoEstadioTab"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="sec-decadas" style="display: none; width: 100%; max-width: 800px;">
+                    <div class="resumen-container">
+                        <div class="resumen-header">Historial por Décadas</div>
+                        <table class="goleadas-table">
+                            <thead>
+                                <tr>
+                                    <th>Década</th>
+                                    <th>Partidos Jugados</th>
+                                    <th id="thGaDec">Ganó A</th>
+                                    <th>Empate</th>
+                                    <th id="thGbDec">Ganó B</th>
+                                    <th id="thGolADec">Goles A</th>
+                                    <th id="thGolBDec">Goles B</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cuerpoDecadas"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="sec-historial" style="display: none; width: 100%; max-width: 800px;">
+                    <div class="resumen-container">
+                        <div class="resumen-header">Historial Completo de Partidos</div>
+                        <table class="goleadas-table">
+                            <thead><tr><th>FECHA</th><th>TORNEO</th><th>LOCAL</th><th>RESULTADO</th><th>VISITANTE</th><th>ESTADIO</th><th>ERA</th></tr></thead>
+                            <tbody id="cuerpoHistorial"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="sec-trivia" style="display: none; width: 100%; max-width: 800px;">
+                    <div class="resumen-container">
+                        <div class="resumen-header">Trivia Histórica</div>
+                        <div style="padding: 30px; text-align: center; min-height: 300px; display: flex; flex-direction: column; justify-content: center;">
+                            
+                            <div style="margin-bottom: 25px; background: #111827; padding: 15px; border-radius: 8px; border: 1px solid #1f2937;">
+                                <label style="color: #94a3b8; font-weight: bold; margin-right: 10px; font-size: 0.95rem;">Dificultad:</label>
+                                <select id="trivia-modo" onchange="generarPreguntaTrivia()" style="background: #1f2937; color: white; border: 1px solid #38bdf8; padding: 8px 12px; border-radius: 4px; font-weight: bold; cursor: pointer;">
+                                    <option value="normal">🟢 Normal (Adivinar resultados post-1980)</option>
+                                    <option value="dificil">🔴 Difícil (Todo el historial y goles exactos)</option>
+                                </select>
+                            </div>
+
+                            <h3 id="trivia-pregunta" style="color: #e2e8f0; font-size: 1.3rem; margin-bottom: 25px;">Cargando pregunta...</h3>
+                            
+                            <div id="trivia-opciones" style="display: flex; flex-direction: column; gap: 12px; max-width: 400px; margin: 0 auto; width: 100%;">
+                            </div>
+
+                            <div id="trivia-feedback" style="margin-top: 25px; font-size: 1.2rem; min-height: 30px;"></div>
+                            
+                            <button id="btnTriviaSiguiente" onclick="generarPreguntaTrivia()" style="display: none; margin-top: 20px; background:#38bdf8; color:#0b0f1a; border:none; padding:12px 25px; border-radius:5px; cursor:pointer; font-weight:bold; width: fit-content; margin-left: auto; margin-right: auto; transition: 0.3s;">
+                                Siguiente Pregunta ➡️
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-comunidad" style="display: none; width: 100%; max-width: 800px;">
+                    <div class="resumen-container">
+                        <div class="resumen-header">Proyecto en crecimiento</div>
+                        <div class="legal-content" style="text-align: center; padding: 40px 20px; margin-bottom: 0; border: none;">
+                            <h2 style="font-size: 1.8rem; margin-bottom: 20px;">¡Hagamos gigante a Archifulbo!</h2>
+                            <p style="font-size: 1.1rem; color: #cbd5e1; margin-bottom: 20px; line-height: 1.6;">
+                                Archifulbo es un proyecto que está en pleno crecimiento. El apoyo del futbolero argentino es nuestro motor principal para seguir avanzando. Cada vez que compartís esta página para ganar una discusión de tribuna, nos hacés un poco más grandes.
+                            </p>
+                            
+                            <div style="background: #1f2937; padding: 25px; border-radius: 8px; border: 1px solid #38bdf8; margin: 30px auto; max-width: 600px;">
+                                <h3 style="color: #38bdf8; margin-top: 0; border: none; text-align: center;">¿Dudas, quejas o correcciones?</h3>
+                                <p style="font-size: 0.95rem; color: #94a3b8; margin-bottom: 20px; text-align: center;">
+                                    Revisar tantos años de historia no es fácil. Si tenés alguna sugerencia o notás que hay que hacer modificaciones en fechas y resultados (como por ejemplo, el año exacto de la Copa Centenario de 1993, datos de sincronización, etc.), comunicate con nosotros.
+                                </p>
+                                <p style="font-size: 1.2rem; font-weight: bold; color: #f8fafc; margin-bottom: 0; text-align: center;">
+                                    Escribinos a: <br><span style="color: #38bdf8; user-select: all;">tablahistorica@gmail.com</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-legales" style="display: none; width: 100%; max-width: 800px;">
+                    <div class="legal-content">
+                        <h2>Términos y Condiciones de Uso: Archifulbo</h2>
+                        
+                        <h3>1. Aceptación de los Términos</h3>
+                        <p>Al acceder y utilizar Archifulbo (en adelante, "el Sitio"), el usuario acepta cumplir con estos Términos y Condiciones. El acceso al sitio es gratuito y su uso implica la aceptación de estas normas.</p>
+
+                        <h3>2. Naturaleza del Servicio</h3>
+                        <p>Archifulbo es una plataforma dedicada a la recopilación, organización y difusión de estadísticas, historiales y datos del fútbol argentino y mundial. La información se ofrece con fines exclusivamente informativos, educativos y recreativos.</p>
+
+                        <h3>3. Fuentes de Información y Atribución</h3>
+                        <p>Gran parte de la riqueza estadística de este sitio es posible gracias al trabajo de investigadores y organizaciones de renombre.</p>
+                        <ul>
+                            <li><strong>Reconocimiento:</strong> Archifulbo reconoce y agradece profundamente el trabajo de <strong>Pablo Ciullini</strong> y los registros de la <strong>RSSSF (Rec.Sport.Soccer Statistics Foundation)</strong>, cuyos datos han sido fundamentales para la construcción de esta base de datos.</li>
+                            <li>El uso de esta información se realiza bajo el compromiso de citar y respetar las fuentes originales de investigación.</li>
+                        </ul>
+
+                        <h3>4. Precisión de los Datos y Responsabilidad</h3>
+                        <ul>
+                            <li><strong>No infalibilidad:</strong> Los registros históricos pueden estar sujetos a revisiones o hallazgos de nuevos documentos. Archifulbo no garantiza la exactitud absoluta de cada dato.</li>
+                            <li><strong>Uso por parte del usuario:</strong> El Sitio no se responsabiliza por decisiones (incluyendo, pero no limitado a, apuestas deportivas o inversiones) tomadas por el usuario basándose en la información publicada. El uso de los datos es responsabilidad exclusiva del visitante.</li>
+                            <li><strong>Actualizaciones:</strong> Nos reservamos el derecho de modificar o corregir datos en cualquier momento para asegurar la mayor precisión histórica.</li>
+                        </ul>
+
+                        <h3>5. Propiedad Intelectual</h3>
+                        <ul>
+                            <li><strong>Contenido Propio:</strong> El diseño, la estructura de las tablas, el logo de Archifulbo y la organización de la base de datos son propiedad del Sitio.</li>
+                            <li><strong>Uso Permitido:</strong> Se permite citar datos de Archifulbo para fines periodísticos o personales, siempre y cuando se mencione a <strong>Archifulbo</strong> como fuente, junto a los investigadores originales correspondientes.</li>
+                        </ul>
+
+                        <h3>6. Ley Aplicable y Jurisdicción</h3>
+                        <p>Estos términos se rigen por las leyes de la República Argentina. Cualquier controversia será sometida a los tribunales competentes de dicha jurisdicción.</p>
+
+                        <hr style="border:0; border-top:1px solid #2d3748; margin: 40px 0;">
+
+                        <h2>Política de Privacidad: Archifulbo</h2>
+
+                        <h3>1. Información que Recopilamos</h3>
+                        <p>En Archifulbo recopilamos información de dos maneras:</p>
+                        <ul>
+                            <li><strong>Datos proporcionados por el usuario:</strong> A través de nuestro medio de contacto (nombre, mail y mensaje). Estos datos se utilizan únicamente para responder a consultas, sugerencias o reclamos.</li>
+                            <li><strong>Datos de navegación (Cookies):</strong> Utilizamos herramientas de terceros que recopilan datos anónimos sobre el dispositivo, ubicación geográfica aproximada y comportamiento en el sitio para mejorar la experiencia del usuario.</li>
+                        </ul>
+
+                        <h3>2. Uso de Cookies y Publicidad de Terceros</h3>
+                        <p>Este Sitio utiliza cookies para personalizar el contenido y los anuncios.</p>
+                        <ul>
+                            <li><strong>Anuncios:</strong> Trabajamos con redes de publicidad que pueden utilizar cookies para mostrar anuncios basados en las visitas previas del usuario a este u otros sitios web.</li>
+                            <li><strong>Sitios de Apuestas y Enlaces Externos:</strong> Archifulbo puede contener enlaces o banners publicitarios de sitios de apuestas y terceros. No nos hacemos responsables de las políticas de privacidad ni de las prácticas de dichos sitios. El usuario accede a ellos bajo su propia responsabilidad.</li>
+                        </ul>
+
+                        <h3>3. Finalidad de los Datos</h3>
+                        <ol>
+                            <li>Gestionar y responder el contacto con el usuario.</li>
+                            <li>Analizar el tráfico para optimizar el contenido estadístico.</li>
+                            <li>Mostrar publicidad relevante para el mantenimiento del sitio.</li>
+                        </ol>
+
+                        <h3>4. Seguridad y Confidencialidad</h3>
+                        <p>Nos comprometemos a no vender, alquilar ni compartir los nombres o correos electrónicos de nuestros usuarios con terceros. Los datos de contacto se tratan con estricta confidencialidad.</p>
+
+                        <h3>5. Derechos del Usuario</h3>
+                        <p>En cumplimiento con la Ley 25.326, los usuarios tienen derecho a solicitar el acceso, la rectificación o la eliminación de sus datos personales de nuestra base de contacto escribiendo a: <strong>tablahistorica@gmail.com</strong>.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <div class="gambling-warning">
+                    🔞 Solo para mayores de 18 años. El juego compulsivo es perjudicial para la salud.
+                </div>
+                <div>
+                    &copy; 2026 Archifulbo. Todos los derechos reservados.<br><br>
+                    <a onclick="mostrarSeccion('legales')">Términos y Condiciones</a> | 
+                    <a onclick="mostrarSeccion('comunidad')">Contacto / Comunidad</a>
+                </div>
+            </div>
+        </div> 
+    </div> 
+    
+    <script>
+        const supabaseUrl = 'https://pwyzkuyknqgjkjweehaq.supabase.co'; 
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3eXprdXlrbnFnamtqd2VlaGFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNTcyNzEsImV4cCI6MjA4ODgzMzI3MX0.Ya-byf2e6ZVbTX4cellWOmF66wQOika0fo45Nik6L80'; 
+        
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let partidosGlobales = [];
+        let equipoA = "Boca Juniors";
+        let equipoB = "River Plate";
+
+        // FUNCIÓN NUEVA: Convierte YYYY-MM-DD a DD-MM-YYYY
+        function formatoFechaAR(fechaIn) {
+            if (!fechaIn) return "";
+            const partes = fechaIn.split('-');
+            if (partes.length === 3) {
+                return `${partes[2]}-${partes[1]}-${partes[0]}`;
+            }
+            return fechaIn;
+        }
+
+        async function inicializar() {
+            const equipos = ["Boca Juniors", "River Plate", "Independiente", "Racing Club", "San Lorenzo", "Vélez Sarsfield"];
+            let sA = document.getElementById('selA'), sB = document.getElementById('selB');
+            equipos.forEach(e => { sA.add(new Option(e,e)); sB.add(new Option(e,e)); });
+            sA.value = equipoA; sB.value = equipoB;
+            
+            await cargarDatos();
+        }
+
+        async function cargarDatos() {
+            equipoA = document.getElementById('selA').value;
+            equipoB = document.getElementById('selB').value;
+
+            if (equipoA === equipoB) {
+                alert("Por favor, selecciona dos equipos distintos.");
+                return;
+            }
+
+            const { data, error } = await supabaseClient
+                .from('partidos')
+                .select('*')
+                .in('local_id', [equipoA, equipoB])
+                .in('visitante_id', [equipoA, equipoB])
+                .order('fecha', { ascending: false });
+
+            if (error) {
+                console.error("Error de Supabase:", error);
+                return;
+            }
+
+            partidosGlobales = data || [];
+            procesarEstadisticas();
+        }
+
+        function procesarEstadisticas() {
+            let stats = { pj: 0, ga: 0, gb: 0, emp: 0, golesA: 0, golesB: 0, penA: 0, penB: 0 };
+            let amateur = { pj: 0, ga: 0, gb: 0, emp: 0 };
+            let prof = { pj: 0, ga: 0, gb: 0, emp: 0 };
+            let estadiosSet = new Set();
+            let decadasMap = {};
+
+            partidosGlobales.forEach(p => {
+                stats.pj++;
+                estadiosSet.add(p.estadio);
+
+                let golA = p.local_id === equipoA ? p.goles_local : p.goles_visitante;
+                let golB = p.local_id === equipoB ? p.goles_local : p.goles_visitante;
+                stats.golesA += golA;
+                stats.golesB += golB;
+
+                let ganador = null;
+                if (p.resultado === equipoA) { stats.ga++; ganador = equipoA; }
+                else if (p.resultado === equipoB) { stats.gb++; ganador = equipoB; }
+                else if (p.resultado === "Empate") { stats.emp++; ganador = "Empate"; }
+                else { ganador = "Otro"; } 
+
+                if (p.era === "Amateur") {
+                    amateur.pj++;
+                    if (ganador === equipoA) amateur.ga++;
+                    else if (ganador === equipoB) amateur.gb++;
+                    else if (ganador === "Empate") amateur.emp++;
+                } else {
+                    prof.pj++;
+                    if (ganador === equipoA) prof.ga++;
+                    else if (ganador === equipoB) prof.gb++;
+                    else if (ganador === "Empate") prof.emp++;
+                }
+
+                if (p.ganador_penales === equipoA) stats.penA++;
+                if (p.ganador_penales === equipoB) stats.penB++;
+
+                let d = p.decada;
+                if (!decadasMap[d]) decadasMap[d] = { pj: 0, ga: 0, gb: 0, emp: 0, golA: 0, golB: 0 };
+                decadasMap[d].pj++;
+                decadasMap[d].golA += golA;
+                decadasMap[d].golB += golB;
+                
+                if (ganador === equipoA) decadasMap[d].ga++;
+                else if (ganador === equipoB) decadasMap[d].gb++;
+                else if (ganador === "Empate") decadasMap[d].emp++;
+            });
+
+            document.getElementById('labA_nombre').innerText = equipoA;
+            document.getElementById('labB_nombre').innerText = equipoB;
+            aplicarDiseno('escA', equipoA); aplicarDiseno('escB', equipoB);
+            
+            document.getElementById('labA').innerText = "Ganó " + equipoA;
+            document.getElementById('labB').innerText = "Ganó " + equipoB;
+            document.getElementById('labGolA').innerText = "Goles " + equipoA;
+            document.getElementById('labGolB').innerText = "Goles " + equipoB;
+            
+            document.getElementById('penLabA').innerText = "Ganó " + equipoA;
+            document.getElementById('penLabB').innerText = "Ganó " + equipoB;
+            document.getElementById('amaLabGA').innerText = "Ganó " + equipoA;
+            document.getElementById('amaLabGB').innerText = "Ganó " + equipoB;
+            document.getElementById('proLabGA').innerText = "Ganó " + equipoA;
+            document.getElementById('proLabGB').innerText = "Ganó " + equipoB;
+            document.getElementById('est_labA').innerText = "Ganó " + equipoA;
+            document.getElementById('est_labB').innerText = "Ganó " + equipoB;
+            document.getElementById('thGaDec').innerText = "Ganó " + equipoA;
+            document.getElementById('thGbDec').innerText = "Ganó " + equipoB;
+            document.getElementById('thGolADec').innerText = "Goles " + equipoA;
+            document.getElementById('thGolBDec').innerText = "Goles " + equipoB;
+
+            document.getElementById('pj').innerText = stats.pj;
+            document.getElementById('ga').innerText = stats.ga;
+            document.getElementById('gb').innerText = stats.gb;
+            document.getElementById('emp').innerText = stats.emp;
+            document.getElementById('ext_ga').innerText = stats.golesA;
+            document.getElementById('ext_gb').innerText = stats.golesB;
+            document.getElementById('penA').innerText = stats.penA;
+            document.getElementById('penB').innerText = stats.penB;
+
+            document.getElementById('amaPJ').innerText = amateur.pj;
+            document.getElementById('amaGA').innerText = amateur.ga;
+            document.getElementById('amaGB').innerText = amateur.gb;
+            document.getElementById('amaEmp').innerText = amateur.emp;
+            document.getElementById('proPJ').innerText = prof.pj;
+            document.getElementById('proGA').innerText = prof.ga;
+            document.getElementById('proGB').innerText = prof.gb;
+            document.getElementById('proEmp').innerText = prof.emp;
+
+            renderHistorial();
+            renderUltimos5();
+            renderGoleadas();
+            renderDecadas(decadasMap);
+
+            generarTextoFolclore(stats); 
+            generarPreguntaTrivia(); 
+            
+            let sEst = document.getElementById('selEstadio');
+            sEst.innerHTML = "";
+            Array.from(estadiosSet).sort().forEach(est => sEst.add(new Option(est, est)));
+            filtrarPorEstadio();
+        }
+
+        function renderUltimos5() {
+            const tbody = document.getElementById('cuerpoUltimos5');
+            tbody.innerHTML = "";
+            let ultimos = partidosGlobales.slice(0, 5);
+            ultimos.forEach(p => {
+                let obs = p.observaciones ? `<br><small style="color:#fbbf24; font-weight:normal; font-size: 0.75rem;">📋 ${p.observaciones}</small>` : "";
+                tbody.innerHTML += `<tr><td>${formatoFechaAR(p.fecha)}</td><td>${p.competencia_id}</td><td>${p.local_id}</td><td style="color:#38bdf8; font-weight:bold; text-align:center;">${p.goles_local}-${p.goles_visitante}${obs}</td><td>${p.visitante_id}</td></tr>`;
+            });
+        }
+
+        function renderGoleadas() {
+            let goleadasA = partidosGlobales.filter(p => p.resultado === equipoA && p.diferencia_goles >= 3).sort((a,b) => b.diferencia_goles - a.diferencia_goles).slice(0,5);
+            let goleadasB = partidosGlobales.filter(p => p.resultado === equipoB && p.diferencia_goles >= 3).sort((a,b) => b.diferencia_goles - a.diferencia_goles).slice(0,5);
+
+            document.getElementById('headGolA').innerText = "De " + equipoA;
+            document.getElementById('headGolB').innerText = "De " + equipoB;
+
+            const renderTabla = (id, data) => {
+                const tbody = document.getElementById(id);
+                tbody.innerHTML = "";
+                data.forEach(p => {
+                    tbody.innerHTML += `<tr><td>${formatoFechaAR(p.fecha)}</td><td>${p.competencia_id}</td><td>${p.local_id}</td><td style="color:#38bdf8; font-weight:bold; text-align:center;">${p.goles_local}-${p.goles_visitante}</td><td>${p.visitante_id}</td></tr>`;
+                });
+            };
+            renderTabla('cuerpoGoleadasA', goleadasA);
+            renderTabla('cuerpoGoleadasB', goleadasB);
+        }
+
+        function renderDecadas(map) {
+            const tbody = document.getElementById('cuerpoDecadas');
+            tbody.innerHTML = "";
+            Object.keys(map).sort().forEach(d => {
+                let m = map[d];
+                tbody.innerHTML += `<tr><td style="font-weight:bold; color:#38bdf8">${d}s</td><td>${m.pj}</td><td>${m.ga}</td><td>${m.emp}</td><td>${m.gb}</td><td>${m.golA}</td><td>${m.golB}</td></tr>`;
+            });
+        }
+
+        function renderHistorial() {
+            const tbody = document.getElementById('cuerpoHistorial');
+            tbody.innerHTML = "";
+            partidosGlobales.forEach(p => {
+                let obs = p.observaciones ? `<br><small style="color:#fbbf24; font-weight:normal; font-size: 0.75rem;">📋 ${p.observaciones}</small>` : "";
+                tbody.innerHTML += `<tr><td>${formatoFechaAR(p.fecha)}</td><td>${p.competencia_id}</td><td>${p.local_id}</td><td style="color:#38bdf8; font-weight:bold; text-align:center;">${p.goles_local} - ${p.goles_visitante}${obs}</td><td>${p.visitante_id}</td><td>${p.estadio}</td><td>${p.era}</td></tr>`;
+            });
+        }
+
+        function filtrarPorEstadio() {
+            const est = document.getElementById('selEstadio').value;
+            if(!est) return;
+            document.getElementById('tituloEstadio').innerText = "Estadísticas en " + est;
+            const tabla = document.getElementById('cuerpoEstadioTab');
+            tabla.innerHTML = ""; 
+            
+            let pj=0, ga=0, gb=0, emp=0;
+            partidosGlobales.forEach(p => {
+                if(p.estadio === est) {
+                    pj++;
+                    if(p.resultado === equipoA) ga++;
+                    else if(p.resultado === equipoB) gb++;
+                    else if(p.resultado === "Empate") emp++;
+                    
+                    let obs = p.observaciones ? `<br><small style="color:#fbbf24; font-weight:normal; font-size: 0.75rem;">📋 ${p.observaciones}</small>` : "";
+                    tabla.innerHTML += `<tr><td>${formatoFechaAR(p.fecha)}</td><td>${p.competencia_id}</td><td>${p.local_id}</td><td style="color:#38bdf8; font-weight:bold; text-align:center;">${p.goles_local}-${p.goles_visitante}${obs}</td><td>${p.visitante_id}</td></tr>`;
+                }
+            });
+
+            document.getElementById('est_pj').innerText = pj;
+            document.getElementById('est_ga').innerText = ga;
+            document.getElementById('est_gb').innerText = gb;
+            document.getElementById('est_emp').innerText = emp;
+            document.getElementById('est_perc_ga').innerText = `(${pj > 0 ? ((ga/pj)*100).toFixed(1) : 0}%)`;
+            document.getElementById('est_perc_gb').innerText = `(${pj > 0 ? ((gb/pj)*100).toFixed(1) : 0}%)`;
+            document.getElementById('est_perc_emp').innerText = `(${pj > 0 ? ((emp/pj)*100).toFixed(1) : 0}%)`;
+        }
+
+        function mostrarSeccion(seccion) {
+            ['resumen', 'estadios', 'decadas', 'historial', 'trivia', 'legales', 'comunidad'].forEach(s => {
+                const el = document.getElementById('sec-' + s);
+                if(el) {
+                    el.style.display = (seccion === s) ? (s==='resumen'?'flex':'block') : 'none';
+                }
+                const btn = document.getElementById('btnNav' + s.charAt(0).toUpperCase() + s.slice(1));
+                if(btn) {
+                    btn.classList.toggle('active', seccion === s);
+                }
+            });
+            
+            if(seccion === 'legales' || seccion === 'comunidad') {
+                document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            }
+            if(seccion === 'comunidad') {
+                const btn = document.getElementById('btnNavComunidad');
+                if(btn) btn.classList.add('active');
+            }
+        }
+
+        function aplicarDiseno(id, nombre) {
+            const el = document.getElementById(id);
+            el.className = "escudo-v";
+            const n = nombre.toLowerCase();
+            if (n.includes("boca")) el.classList.add("escudo-Boca");
+            else if (n.includes("river")) el.classList.add("escudo-River");
+            else if (n.includes("independiente")) el.classList.add("escudo-Independiente");
+            else if (n.includes("racing")) el.classList.add("escudo-Racing");
+            else if (n.includes("san lorenzo")) el.classList.add("escudo-SanLorenzo");
+            else if (n.includes("vélez") || n.includes("velez")) el.classList.add("escudo-Velez");
+        }
+
+        function toggleMasStats() {
+            const div1 = document.getElementById('masEstadisticas1');
+            const div2 = document.getElementById('masEstadisticas2');
+            const btn = document.getElementById('btnToggleStats');
+            const isHidden = div1.style.display === 'none';
+            div1.style.display = isHidden ? 'block' : 'none';
+            div2.style.display = isHidden ? 'block' : 'none';
+            btn.innerText = isHidden ? '⬆️ OCULTAR ESTADÍSTICAS ⬆️' : '⬇️ MOSTRAR MÁS ESTADÍSTICAS ⬇️';
+        }
+
+        function generarTextoFolclore(stats) {
+            if (!partidosGlobales || partidosGlobales.length === 0) return;
+
+            let ultWinALocal = null, ultWinAVisita = null;
+            let ultWinBLocal = null, ultWinBVisita = null;
+            let ultEmpate = null;
+
+            for (let p of partidosGlobales) {
+                let ganador;
+                if (p.resultado === equipoA) ganador = equipoA;
+                else if (p.resultado === equipoB) ganador = equipoB;
+                else if (p.resultado === "Empate") ganador = "Empate";
+                else ganador = "Otro";
+
+                if (ganador === equipoA && p.local_id === equipoA && !ultWinALocal) ultWinALocal = p;
+                if (ganador === equipoA && p.visitante_id === equipoA && !ultWinAVisita) ultWinAVisita = p;
+                if (ganador === equipoB && p.local_id === equipoB && !ultWinBLocal) ultWinBLocal = p;
+                if (ganador === equipoB && p.visitante_id === equipoB && !ultWinBVisita) ultWinBVisita = p;
+                if (ganador === "Empate" && !ultEmpate) ultEmpate = p;
+            }
+
+            let rachaA = partidosGlobales.findIndex(p => p.resultado === equipoB);
+            let rachaB = partidosGlobales.findIndex(p => p.resultado === equipoA);
+            
+            if (rachaA === -1) rachaA = partidosGlobales.length;
+            if (rachaB === -1) rachaB = partidosGlobales.length;
+
+            let dif = stats.ga - stats.gb;
+            let textoDiferencia = "";
+            if (dif > 0) textoDiferencia = `<strong>${equipoA}</strong> domina el historial general con una ventaja histórica de <strong>${dif} partidos</strong> sobre su rival.`;
+            else if (dif < 0) textoDiferencia = `<strong>${equipoB}</strong> domina el historial general con una ventaja histórica de <strong>${Math.abs(dif)} partidos</strong> sobre su rival.`;
+            else textoDiferencia = `El historial general entre ambos se encuentra <strong>completamente empatado</strong>.`;
+
+            let rachaDominante = "";
+            if (rachaA > rachaB && rachaA >= 3) { 
+                rachaDominante = `🔥 <strong>Racha vigente:</strong> ${equipoB} lleva <strong>${rachaA} partidos</strong> consecutivos sin poder ganarle a ${equipoA}.`;
+            } else if (rachaB > rachaA && rachaB >= 3) {
+                rachaDominante = `🔥 <strong>Racha vigente:</strong> ${equipoA} lleva <strong>${rachaB} partidos</strong> consecutivos sin poder ganarle a ${equipoB}.`;
+            }
+
+            const fraseHito = (p, condicion) => {
+                if (!p) return `Aún no hay registros de victorias en condición de ${condicion}.`;
+                return `Su última victoria de ${condicion} ocurrió el <strong>${formatoFechaAR(p.fecha)}</strong>, cuando se impuso por <span style="color:#38bdf8; font-weight:bold">${p.goles_local}-${p.goles_visitante}</span>.`;
+            };
+
+            let html = `
+                <div style="margin-bottom: 12px; font-size: 1.05rem; border-bottom: 1px solid #2d3748; padding-bottom: 10px;">📊 ${textoDiferencia}</div>
+                ${rachaDominante ? `<div style="margin-bottom: 15px; color: #fbbf24; font-size: 0.95rem;">${rachaDominante}</div>` : ''}
+                
+                <div style="font-size: 0.9rem; color: #cbd5e1; line-height: 1.6; background: #111827; padding: 15px; border-radius: 6px; border: 1px solid #2d3748;">
+                    <p style="margin: 0 0 10px 0;">
+                        <strong>Los hitos de ${equipoA}:</strong><br>
+                        🏠 ${fraseHito(ultWinALocal, 'local')}<br>
+                        ✈️ ${fraseHito(ultWinAVisita, 'visitante')}
+                    </p>
+                    <p style="margin: 0 0 10px 0;">
+                        <strong>Los hitos de ${equipoB}:</strong><br>
+                        🏠 ${fraseHito(ultWinBLocal, 'local')}<br>
+                        ✈️ ${fraseHito(ultWinBVisita, 'visitante')}
+                    </p>
+                    <div style="text-align: center; margin-top: 10px; border-top: 1px solid #1f2937; padding-top: 10px;">
+                        🤝 <strong>El último empate general</strong> entre ambos se registró el ${ultEmpate ? `<strong>${formatoFechaAR(ultEmpate.fecha)}</strong> con un resultado de <span style="color:#38bdf8; font-weight:bold">${ultEmpate.goles_local}-${ultEmpate.goles_visitante}</span>` : 'no tiene fecha, ya que no hay registros de igualdades'}.
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('texto-folclore').innerHTML = html;
+            document.getElementById('mini-resumen-container').style.display = 'block';
+        }
+
+        let triviaRespuestaCorrecta = "";
+
+        function generarPreguntaTrivia() {
+            const preguntaEl = document.getElementById('trivia-pregunta');
+            const opcionesEl = document.getElementById('trivia-opciones');
+            const feedbackEl = document.getElementById('trivia-feedback');
+            const btnSiguiente = document.getElementById('btnTriviaSiguiente');
+            const modo = document.getElementById('trivia-modo').value;
+
+            if (!partidosGlobales || partidosGlobales.length === 0) {
+                preguntaEl.innerText = "No hay partidos suficientes para jugar.";
+                return;
+            }
+
+            let poolPartidos = partidosGlobales;
+            
+            if (modo === 'normal') {
+                poolPartidos = partidosGlobales.filter(p => {
+                    if(!p.fecha) return false;
+                    const anio = parseInt(p.fecha.substring(0,4));
+                    return anio >= 1980;
+                });
+                
+                if (poolPartidos.length === 0) {
+                    poolPartidos = partidosGlobales; 
+                }
+            }
+
+            const pAleatorio = poolPartidos[Math.floor(Math.random() * poolPartidos.length)];
+            
+            feedbackEl.innerHTML = "";
+            btnSiguiente.style.display = "none";
+            opcionesEl.innerHTML = "";
+            
+            let opciones = [];
+            
+            const tipoPregunta = (modo === 'normal') ? 0 : Math.floor(Math.random() * 2); 
+
+            if (tipoPregunta === 0) {
+                preguntaEl.innerHTML = `¿Cuál fue el resultado el <strong>${formatoFechaAR(pAleatorio.fecha)}</strong> por ${pAleatorio.competencia_id}?`;
+                let ganadorReal = pAleatorio.resultado;
+                triviaRespuestaCorrecta = ganadorReal === "Empate" ? "Empate" : `Ganó ${ganadorReal}`;
+                opciones = [`Ganó ${equipoA}`, `Ganó ${equipoB}`, "Empate"];
+            } else {
+                let equipoPreguntado = Math.random() > 0.5 ? equipoA : equipoB;
+                preguntaEl.innerHTML = `¿Cuántos goles hizo <strong>${equipoPreguntado}</strong> el ${formatoFechaAR(pAleatorio.fecha)}?`;
+                let golesReales = pAleatorio.local_id === equipoPreguntado ? pAleatorio.goles_local : pAleatorio.goles_visitante;
+                triviaRespuestaCorrecta = golesReales.toString();
+                
+                opciones = [golesReales.toString()];
+                while(opciones.length < 4) {
+                    let randomGol = Math.floor(Math.random() * 5); 
+                    if(!opciones.includes(randomGol.toString())) opciones.push(randomGol.toString());
+                }
+            }
+
+            opciones.sort(() => Math.random() - 0.5);
+
+            opciones.forEach(opc => {
+                let btn = document.createElement('button');
+                btn.innerText = opc;
+                btn.style.cssText = "background: #1f2937; color: white; border: 1px solid #38bdf8; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.2s;";
+                btn.onmouseover = () => btn.style.background = "#3b82f6";
+                btn.onmouseout = () => btn.style.background = "#1f2937";
+                btn.onclick = () => verificarRespuestaTrivia(opc, btn);
+                opcionesEl.appendChild(btn);
+            });
+        }
+
+        function verificarRespuestaTrivia(elegida, botonEl) {
+            const feedbackEl = document.getElementById('trivia-feedback');
+            const botones = document.getElementById('trivia-opciones').querySelectorAll('button');
+
+            botones.forEach(btn => {
+                btn.disabled = true;
+                btn.style.cursor = "default";
+                btn.onmouseover = null;
+                btn.onmouseout = null;
+                
+                if (btn.innerText === triviaRespuestaCorrecta) {
+                    btn.style.background = "#22c55e"; 
+                    btn.style.borderColor = "#22c55e";
+                } else if (btn === botonEl && elegida !== triviaRespuestaCorrecta) {
+                    btn.style.background = "#ef4444"; 
+                    btn.style.borderColor = "#ef4444";
+                } else {
+                    btn.style.opacity = "0.5";
+                }
+            });
+
+            if (elegida === triviaRespuestaCorrecta) {
+                feedbackEl.innerHTML = "✅ ¡Correcto!";
+                feedbackEl.style.color = "#22c55e";
+            } else {
+                feedbackEl.innerHTML = `❌ Error. La respuesta era: <strong>${triviaRespuestaCorrecta}</strong>`;
+                feedbackEl.style.color = "#ef4444";
+            }
+
+            document.getElementById('btnTriviaSiguiente').style.display = "block";
+        }
+
+        window.onload = inicializar;
+    </script>
+</body>
+</html>
